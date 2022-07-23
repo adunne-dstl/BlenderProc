@@ -15,7 +15,8 @@ from blenderproc.python.utility.Utility import Utility
 from blenderproc.python.utility.LabelIdMapping import LabelIdMapping
 
 
-def write_coco_annotations(output_dir: str, instance_segmaps: Optional[List[np.ndarray]] = None,
+def write_coco_annotations(output_dir: str, metadata: dict,
+                           instance_segmaps: Optional[List[np.ndarray]] = None,
                            instance_attribute_maps: Optional[List[dict]] = None,
                            colors: Optional[List[np.ndarray]] = None, color_file_format: str = "PNG",
                            mask_encoding_format: str = "rle", supercategory: str = "coco_annotations",
@@ -30,6 +31,7 @@ def write_coco_annotations(output_dir: str, instance_segmaps: Optional[List[np.n
     5. For each frame write the coco annotation
 
     :param output_dir: Output directory to write the coco annotations
+    :param metadata: Dict of metadata for given render
     :param instance_segmaps: List of instance segmentation maps
     :param instance_attribute_maps: per-frame mappings with idx, class and optionally supercategory/bop_dataset_name
     :param colors: List of color images
@@ -151,6 +153,7 @@ def write_coco_annotations(output_dir: str, instance_segmaps: Optional[List[np.n
                                                               new_coco_image_paths,
                                                               supercategory,
                                                               mask_encoding_format,
+                                                              metadata,
                                                               existing_coco_annotations,
                                                               label_mapping)
 
@@ -198,7 +201,7 @@ class CocoWriterUtility:
 
     @staticmethod
     def generate_coco_annotations(inst_segmaps, inst_attribute_maps, image_paths, supercategory,
-                                  mask_encoding_format, existing_coco_annotations=None,
+                                  mask_encoding_format,  metadata, existing_coco_annotations=None,
                                   label_mapping: LabelIdMapping = None):
         """Generates coco annotations for images
 
@@ -207,6 +210,7 @@ class CocoWriterUtility:
         :param image_paths: A list of paths which points to the rendered images.
         :param supercategory: name of the dataset/supercategory to filter for, e.g. a specific BOP dataset
         :param mask_encoding_format: Encoding format of the binary mask. Type: string.
+        :param metadata: Dict of metadata for given render
         :param existing_coco_annotations: If given, the new coco annotations will be appended to the given coco annotations dict.
         :param label_mapping: The label mapping which should be used to label the categories based on their ids.
                               If None, is given then the `name` field in the csv files is used or - if not existing - the category id itself is used.
@@ -257,7 +261,9 @@ class CocoWriterUtility:
             "version": "0.1.0",
             "year": 2020,
             "contributor": "Unknown",
-            "date_created": datetime.datetime.utcnow().isoformat(' ')
+            "date_created": datetime.datetime.utcnow().isoformat(' '),
+            "render_software": "Blender 3.2.1",
+            "config_file" : metadata["config_file"]
         }
 
         images: List[Dict[str, Union[str, int]]] = []
@@ -268,7 +274,7 @@ class CocoWriterUtility:
 
             # Add coco info for image
             image_id = len(images)
-            images.append(CocoWriterUtility.create_image_info(image_id, image_path, inst_segmap.shape))
+            images.append(CocoWriterUtility.create_image_info(image_id, image_path, inst_segmap.shape, metadata))
 
             # Go through all objects visible in this image
             instances = np.unique(inst_segmap)
@@ -338,12 +344,14 @@ class CocoWriterUtility:
         return existing_coco_annotations
 
     @staticmethod
-    def create_image_info(image_id: int, file_name: str, image_size: Tuple[int, int]) -> Dict[str, Union[str, int]]:
+    def create_image_info(image_id: int, file_name: str, image_size: Tuple[int, int], metadata: dict) \
+            -> Dict[str, Union[str, int]]:
         """Creates image info section of coco annotation
 
-        :param image_id: integer to uniquly identify image
+        :param image_id: integer to uniquely identify image
         :param file_name: filename for image
         :param image_size: The size of the image, given as [W, H]
+        :param metadata: Dict of metadata for given render
         """
         image_info: Dict[str, Union[str, int]] = {
             "id": image_id,
@@ -353,7 +361,11 @@ class CocoWriterUtility:
             "date_captured": datetime.datetime.utcnow().isoformat(' '),
             "license": 1,
             "coco_url": "",
-            "flickr_url": ""
+            "flickr_url": "",
+            "inplane_camera_rotation": metadata["camera_inplane_rot"],
+            "fov_angle": "" #TODO
+
+
         }
 
         return image_info
