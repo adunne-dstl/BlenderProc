@@ -289,7 +289,8 @@ class CocoWriterUtility:
                                                                           image_id,
                                                                           instance_2_category_map[inst],
                                                                           binary_inst_mask,
-                                                                          mask_encoding_format)
+                                                                          mask_encoding_format,
+                                                                          metadata=metadata)
                     if annotation is not None:
                         annotations.append(annotation)
 
@@ -362,17 +363,19 @@ class CocoWriterUtility:
             "license": 1,
             "coco_url": "",
             "flickr_url": "",
-            "inplane_camera_rotation": metadata["camera_inplane_rot"],
-            "fov_angle": "" #TODO
-
-
+            "distance_to_target": metadata['distance_to_target'],
+            "altitude": metadata["altitude"],
+            "elevation_angle": metadata["elevation_angle"],
+            "scene_file" : metadata["scene_file"],
+            "object_file": metadata["object_file"],
         }
 
         return image_info
 
     @staticmethod
+    ## Annotation_id in blender can be link between metadata and object instance
     def create_annotation_info(annotation_id: int, image_id: int, category_id: int, binary_mask: np.ndarray,
-                               mask_encoding_format: str, tolerance: int = 2) -> Optional[Dict[str, Union[str, int]]]:
+                               mask_encoding_format: str, metadata: dict, tolerance: int = 2) -> Optional[Dict[str, Union[str, int]]]:
         """Creates info section of coco annotation
 
         :param annotation_id: integer to uniquly identify the annotation
@@ -381,6 +384,7 @@ class CocoWriterUtility:
         :param binary_mask: A binary image mask of the object with the shape [H, W].
         :param mask_encoding_format: Encoding format of the mask. Type: string.
         :param tolerance: The tolerance for fitting polygons to the objects mask.
+        :param metadata: Dict of metadata for given render
         """
 
         area = CocoWriterUtility.calc_binary_mask_area(binary_mask)
@@ -408,6 +412,7 @@ class CocoWriterUtility:
             "segmentation": segmentation,
             "width": binary_mask.shape[1],
             "height": binary_mask.shape[0],
+            "distance_to_target": metadata['distance_to_target']
         }
         return annotation_info
 
